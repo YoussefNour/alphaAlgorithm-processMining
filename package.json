@@ -19,5 +19,10 @@
   "bugs": {
     "url": "https://github.com/YoussefNour/alphaAlgorithm-processMining/issues"
   },
-  "homepage": "https://github.com/YoussefNour/alphaAlgorithm-processMining#readme"
+  "homepage": "https://github.com/YoussefNour/alphaAlgorithm-processMining#readme",
+  "dependencies": {
+    "csvtojson": "^2.0.10",
+    "fs": "0.0.1-security",
+    "json2csv": "^5.0.5"
+  }
 }
