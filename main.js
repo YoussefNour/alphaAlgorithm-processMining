@@ -1,24 +1,18 @@
 const fs = require("fs");
 const csv = require("csvtojson");
 const { parser } = require("json2csv");
-const { Console } = require("console");
+const { time } = require("console");
 
 (async () => {
   try {
     const file = await csv().fromFile("log - Copy.csv");
     //console.log(file);
-    
-    // const compare = (a, b) => {
-    //   if (a.caseID < b.caseID) {
-    //     return -1;
-    //   }
-    //   if (a.caseID > b.caseID) {
-    //     return 1;
-    //   }
-    //   return 0;
-    // };
-    //file.sort(compare);
-    //console.log(file);
+    var dir = "./results";
+    //creating results file if not found in directory
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+
     let activities = []; //holds all the activities names/ID
     let cases = []; //holds all the cases names/ID
     let resources = []; //holds all the resources names/ID
@@ -40,8 +34,10 @@ const { Console } = require("console");
         resources.push(temp);
       }
     }
+    activities.sort();
+    cases.sort();
     resources.sort();
-
+    //console.log(activities);
 
     //creating the event resourse pivot table to see how much a resource gets used by each event
     let eventResourcetable = [];
@@ -56,9 +52,7 @@ const { Console } = require("console");
         }
       }
     }
-    
-    //console.log(eventResourcetable);
-    writeToCSV("./event_resourceTable.csv",eventResourcetable);
+    writeToCSV("./results/event_resourceTable.csv", eventResourcetable);
 
     //getting frequencies of activities
     let frequencies = [];
@@ -70,13 +64,18 @@ const { Console } = require("console");
           count++;
         }
       }
-      frequency = count / file.length;
-      frequencies.push({ activityName: activities[i], frequency: frequency });
+      frequency = (count / file.length) * 100;
+      frequencies.push({
+        activityName: activities[i],
+        frequency: count,
+        precentage: frequency,
+      });
     }
     frequencies.sort(function (a, b) {
       return b.frequency - a.frequency;
     });
-    storeDataInJSON("./frequencies.json", frequencies);
+    writeToCSV("./results/frequencies.csv", frequencies);
+
     let dividedactivities = []; //holds all the activites but divided based on case name/ID
     for (i = 0; i < cases.length; i++) {
       dividedactivities.push([]);
@@ -91,43 +90,126 @@ const { Console } = require("console");
         dividedactivities[i][j].date = new Date(dividedactivities[i][j].date);
       }
     }
-    //console.log(dividedactivities);
-    //console.log("\nunsorted divided data\n");
+
     //sorting data based on time stamp
     for (let i = 0; i < dividedactivities.length; i++) {
       dividedactivities[i].sort(function (a, b) {
         return a.date - b.date;
       });
     }
-    //console.log(dividedactivities);
-    //console.log("sorted based on date");
+
+    //getting start and end events
+    startingevents = [];
+    endingevents = [];
+    dividedactivities.forEach((element) => {
+      temp = element[0].activityName;
+      if (startingevents.indexOf(temp) < 0) {
+        startingevents.push(temp);
+      }
+      temp = element[element.length - 1].activityName;
+      if (endingevents.indexOf(temp) < 0) {
+        endingevents.push(temp);
+      }
+    });
+    console.log(startingevents);
+    console.log(endingevents);
+
+    let flatactivities = dividedactivities.flat();
+    writeToCSV("./results/processedData.csv", flatactivities);
+
+    //getting task time
+    times = [];
+    for (let i = 0; i < flatactivities.length; i++) {
+      temp = flatactivities[i].activityName;
+      if (endingevents.indexOf(temp)>-1) {
+        flatactivities[i].date = 0;
+      } else {
+        diff = flatactivities[i + 1].date - flatactivities[i].date;
+        var msec = diff;
+        var hh = Math.floor(msec / 1000 / 60 / 60);
+        msec -= hh * 1000 * 60 * 60;
+        var mm = Math.floor(msec / 1000 / 60);
+        var time = hh + ":" + mm;
+        times.push({activity:temp,period:time});
+      }
+    }
+    writeToCSV("./results/eventperiods.csv", times);
 
     let relations = []; //hold all the relations between events
-    let successions = []; //hold all the relations between events
     for (let i = 0; i < dividedactivities.length; i++) {
       for (let j = 0; j < dividedactivities[i].length - 1; j++) {
-        successions.push({
+        relations.push({
           activityone: dividedactivities[i][j].activityName,
           relation: ">",
           activitytwo: dividedactivities[i][j + 1].activityName,
         });
       }
     }
+
     //removing duplicates
-    tempsuccessions = successions;
-    for (let i = 0; i < tempsuccessions.length; i++) {
-      for (let j = i + 1; j < tempsuccessions.length - 2; j++) {
+    for (let i = 0; i < relations.length; i++) {
+      for (let j = i + 1; j < relations.length; j++) {
         if (
-          tempsuccessions[i].activityone == tempsuccessions[j].activityone &&
-          tempsuccessions[i].activitytwo == tempsuccessions[j].activitytwo &&
-          tempsuccessions[i].relation == tempsuccessions[j].relation
+          relations[i].activityone == relations[j].activityone &&
+          relations[i].activitytwo == relations[j].activitytwo
         ) {
-          successions.splice(j, j);
+          relations[j].relation = "duplicate";
         }
       }
     }
-    writeToCSV("./successions.csv",successions);
-    //storeDataInJSON("./successions.json", successions);
+    let arr = [];
+    relations.forEach((element) => {
+      if (element.relation != "duplicate") {
+        arr.push(element);
+      }
+    });
+    relations = arr;
+    writeToCSV("./results/relations.csv", relations);
+
+    //finding parallel relations
+    arr = [];
+    arrparallel = [];
+    for (let i = 0; i < relations.length; i++) {
+      for (let j = i + 1; j < relations.length; j++) {
+        if (
+          relations[i].activityone == relations[j].activitytwo &&
+          relations[i].activitytwo == relations[j].activityone &&
+          relations[i].relation == ">" &&
+          relations[j].relation == ">"
+        ) {
+          relations[i].relation = "||";
+          arrparallel.push(relations[i]);
+          relations[i].relation = "duplicate";
+          relations[j].relation = "duplicate";
+        }
+      }
+    }
+
+    for (let i = 0; i < arrparallel.length; i++) {
+      notfirst = false;
+      for (let j = 0; j < relations.length; j++) {
+        if (
+          (arrparallel[i].activityone == relations[j].activityone ||
+            arrparallel[i].activityone == relations[j].activitytwo ||
+            arrparallel[i].activitytwo == relations[j].activityone ||
+            arrparallel[i].activitytwo == relations[j].activitytwo) &&
+          relations[j].relation == ">"
+        ) {
+          if (notfirst) {
+            relations[j].relation = "duplicate";
+            notfirst = true;
+          }
+        }
+      }
+    }
+    relations.forEach((element) => {
+      if (element.relation != "duplicate") {
+        arr.push(element);
+      }
+    });
+    relations = arr;
+    writeToCSV("./results/relations.csv", relations);
+
     // temprelation = relations;
     // noncausalrelations = [];
     // for (let i = 0; i < temprelation.length; i++) {
@@ -141,14 +223,13 @@ const { Console } = require("console");
     //       relations[i].relation = "||";
     //       relations[i].activitytwo = temprelation[i].activitytwo;
     //       relations.splice(j, j);
+    //     } else if (
+    //       temprelation[i].activityone == temprelation[j].activityone &&
+    //       temprelation[i].activitytwo == temprelation[j].activitytwo &&
+    //       temprelation[i].relation == temprelation[j].relation
+    //     ) {
+    //       relations.splice(j, j);
     //     }
-    //     //else if(
-    //     //   temprelation[i].activityone == temprelation[j].activityone &&
-    //     //   temprelation[i].activitytwo == temprelation[j].activitytwo &&
-    //     //   temprelation[i].relation == temprelation[j].relation
-    //     // ){
-    //     //   relations.splice(j,j);
-    //     // }
     //   }
     // }
 
@@ -183,9 +264,9 @@ function storeDataInJSON(file, data) {
 }
 
 // JSON to CSV Converter
-function writeToCSV(name,arr) {
+function writeToCSV(name, arr) {
   const headers = Object.keys(arr[0]).join();
-  const content = arr.map(r => Object.values(r).join());
+  const content = arr.map((r) => Object.values(r).join());
   X = [headers].concat(content).join("\n");
-  fs.writeFileSync(name,X);
+  fs.writeFileSync(name, X);
 }
