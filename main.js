@@ -1,7 +1,6 @@
 const fs = require("fs");
 const csv = require("csvtojson");
 const { parser } = require("json2csv");
-const { time } = require("console");
 
 (async () => {
   try {
@@ -37,7 +36,7 @@ const { time } = require("console");
     activities.sort();
     cases.sort();
     resources.sort();
-    //console.log(activities);
+    console.log(activities);
 
     //creating the event resourse pivot table to see how much a resource gets used by each event
     let eventResourcetable = [];
@@ -97,8 +96,8 @@ const { time } = require("console");
         return a.date - b.date;
       });
     }
+    writeToCSV("./results/processedData.csv", dividedactivities.flat());
 
-    //getting start and end events
     startingevents = [];
     endingevents = [];
     dividedactivities.forEach((element) => {
@@ -134,6 +133,7 @@ const { time } = require("console");
       }
     }
     writeToCSV("./results/eventperiods.csv", times);
+
 
     let relations = []; //hold all the relations between events
     for (let i = 0; i < dividedactivities.length; i++) {
@@ -179,25 +179,23 @@ const { time } = require("console");
         ) {
           relations[i].relation = "||";
           arrparallel.push(relations[i]);
-          relations[i].relation = "duplicate";
           relations[j].relation = "duplicate";
         }
       }
     }
-
     for (let i = 0; i < arrparallel.length; i++) {
-      notfirst = false;
+      first = true;
       for (let j = 0; j < relations.length; j++) {
         if (
           (arrparallel[i].activityone == relations[j].activityone ||
-            arrparallel[i].activityone == relations[j].activitytwo ||
-            arrparallel[i].activitytwo == relations[j].activityone ||
-            arrparallel[i].activitytwo == relations[j].activitytwo) &&
+          arrparallel[i].activityone == relations[j].activitytwo ||
+          arrparallel[i].activitytwo == relations[j].activityone ||
+          arrparallel[i].activitytwo == relations[j].activitytwo )&&
           relations[j].relation == ">"
         ) {
-          if (notfirst) {
+          if(first){
             relations[j].relation = "duplicate";
-            notfirst = true;
+            first = false;
           }
         }
       }
