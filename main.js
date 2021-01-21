@@ -6,22 +6,23 @@ const { Console } = require("console");
 (async () => {
   try {
     const file = await csv().fromFile("log - Copy.csv");
-    console.log(file);
-
-    const compare = (a, b) => {
-      if (a.caseID < b.caseID) {
-        return -1;
-      }
-      if (a.caseID > b.caseID) {
-        return 1;
-      }
-      return 0;
-    };
-
-    file.sort(compare);
+    //console.log(file);
+    
+    // const compare = (a, b) => {
+    //   if (a.caseID < b.caseID) {
+    //     return -1;
+    //   }
+    //   if (a.caseID > b.caseID) {
+    //     return 1;
+    //   }
+    //   return 0;
+    // };
+    //file.sort(compare);
     //console.log(file);
     let activities = []; //holds all the activities names/ID
     let cases = []; //holds all the cases names/ID
+    let resources = []; //holds all the resources names/ID
+
     for (i = 0; i < file.length; i++) {
       //getting all the unqiue activities in the trace log
       temp = file[i].activityName;
@@ -33,23 +34,49 @@ const { Console } = require("console");
       if (cases.indexOf(temp) < 0) {
         cases.push(temp);
       }
+      //getting all the unqiue cases in the trace log
+      temp = file[i].resource;
+      if (resources.indexOf(temp) < 0) {
+        resources.push(temp);
+      }
     }
+    resources.sort();
+
+
+    //creating the event resourse pivot table to see how much a resource gets used by each event
+    let eventResourcetable = [];
+    for (let i = 0; i < activities.length; i++) {
+      eventResourcetable.push({ activityName: activities[i] });
+      resources.forEach((element) => {
+        eventResourcetable[i][element] = 0;
+      });
+      for (let j = 0; j < file.length; j++) {
+        if (file[j].activityName == eventResourcetable[i].activityName) {
+          eventResourcetable[i][file[j].resource] += 1;
+        }
+      }
+    }
+    
+    //console.log(eventResourcetable);
+    writeToCSV("./event_resourceTable.csv",eventResourcetable);
+
     //getting frequencies of activities
     let frequencies = [];
     for (let i = 0; i < activities.length; i++) {
-      let count=0,frequency=0;
+      let count = 0,
+        frequency = 0;
       for (let j = 0; j < file.length; j++) {
-        if(file[j].activityName==activities[i]){
+        if (file[j].activityName == activities[i]) {
           count++;
         }
       }
-      frequency = count/file.length;
-      frequencies.push({activityName:activities[i],frequency:frequency});
+      frequency = count / file.length;
+      frequencies.push({ activityName: activities[i], frequency: frequency });
     }
-    frequencies.sort(function(a,b){
+    frequencies.sort(function (a, b) {
       return b.frequency - a.frequency;
     });
-    storeDataInJSON("./frequencies.json",frequencies);
+    storeDataInJSON("./frequencies.json", frequencies);
     let dividedactivities = []; //holds all the activites but divided based on case name/ID
     for (i = 0; i < cases.length; i++) {
       dividedactivities.push([]);
@@ -99,7 +126,8 @@ const { Console } = require("console");
         }
       }
     }
-    storeDataInJSON("./successions.json", successions);
+    writeToCSV("./successions.csv",successions);
+    //storeDataInJSON("./successions.json", successions);
     // temprelation = relations;
     // noncausalrelations = [];
     // for (let i = 0; i < temprelation.length; i++) {
@@ -152,4 +180,12 @@ function storeDataInJSON(file, data) {
     }
     return;
   });
+}
+
+// JSON to CSV Converter
+function writeToCSV(name,arr) {
+  const headers = Object.keys(arr[0]).join();
+  const content = arr.map(r => Object.values(r).join());
+  X = [headers].concat(content).join("\n");
+  fs.writeFileSync(name,X);
 }
