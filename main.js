@@ -141,7 +141,7 @@ const { parser } = require("json2csv");
         relations.push({
           activityone: dividedactivities[i][j].activityName,
           relation: ">",
-          activitytwo: dividedactivities[i][j + 1].activityName,
+          activitytwo: dividedactivities[i][j + 1].activityName
         });
       }
     }
@@ -206,44 +206,31 @@ const { parser } = require("json2csv");
       }
     });
     relations = arr;
+    
+    for (let i = 0; i < relations.length; i++) {
+      for (let j = i + 1; j < relations.length; j++) {
+        if (
+          relations[i].activityone == relations[j].activityone &&
+          relations[i].activitytwo != relations[j].activitytwo &&
+          relations[i].relation == ">" &&
+          relations[j].relation == ">"
+        ) {
+          relations.push({
+            activityone: relations[i].activitytwo,
+            relation: "#",
+            activitytwo: relations[j].activitytwo
+          });
+        }
+      }
+    }
+    //putting the causality signs
+    relations.forEach(element => {
+      if(element.relation == ">"){
+        element.relation = "->";
+      }
+    });
     writeToCSV("./results/relations.csv", relations);
 
-    // temprelation = relations;
-    // noncausalrelations = [];
-    // for (let i = 0; i < temprelation.length; i++) {
-    //   for (let j = i + 1; j < temprelation.length - 2; j++) {
-    //     if (
-    //       temprelation[i].activityone == temprelation[j].activitytwo &&
-    //       temprelation[i].activitytwo == temprelation[j].activityone &&
-    //       temprelation[i].relation == temprelation[j].relation
-    //     ) {
-    //       relations[i].activityone = temprelation[i].activityone;
-    //       relations[i].relation = "||";
-    //       relations[i].activitytwo = temprelation[i].activitytwo;
-    //       relations.splice(j, j);
-    //     } else if (
-    //       temprelation[i].activityone == temprelation[j].activityone &&
-    //       temprelation[i].activitytwo == temprelation[j].activitytwo &&
-    //       temprelation[i].relation == temprelation[j].relation
-    //     ) {
-    //       relations.splice(j, j);
-    //     }
-    //   }
-    // }
-
-    // // let indexes = [];
-    // // for (let i = 0; i < activities.length; i++) {
-    // //   let temp1,temp2;
-    // //   temp1 = activities[i];
-    // //   for (let j = 0; j < activities.length; j++) {
-
-    // //   }
-    // //   for (let j = 0; j < relations.length; j++) {
-
-    // //     relations.push({activityone:dividedactivities[i][j].activityName,relation:">",activitytwo:dividedactivities[i][j+1].activityName});
-    // //   }
-    // // }
-    // storeDataInJSON("./relationsparallelchecked.json", relations);
   } catch (error) {
     console.error(error);
   }
