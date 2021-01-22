@@ -120,7 +120,7 @@ const { parser } = require("json2csv");
     times = [];
     for (let i = 0; i < flatactivities.length; i++) {
       temp = flatactivities[i].activityName;
-      if (endingevents.indexOf(temp)>-1) {
+      if (endingevents.indexOf(temp) > -1) {
         flatactivities[i].date = 0;
       } else {
         diff = flatactivities[i + 1].date - flatactivities[i].date;
@@ -129,11 +129,10 @@ const { parser } = require("json2csv");
         msec -= hh * 1000 * 60 * 60;
         var mm = Math.floor(msec / 1000 / 60);
         var time = hh + ":" + mm;
-        times.push({activity:temp,period:time});
+        times.push({ activity: temp, period: time });
       }
     }
     writeToCSV("./results/eventperiods.csv", times);
-
 
     let relations = []; //hold all the relations between events
     for (let i = 0; i < dividedactivities.length; i++) {
@@ -141,7 +140,7 @@ const { parser } = require("json2csv");
         relations.push({
           activityone: dividedactivities[i][j].activityName,
           relation: ">",
-          activitytwo: dividedactivities[i][j + 1].activityName
+          activitytwo: dividedactivities[i][j + 1].activityName,
         });
       }
     }
@@ -188,12 +187,12 @@ const { parser } = require("json2csv");
       for (let j = 0; j < relations.length; j++) {
         if (
           (arrparallel[i].activityone == relations[j].activityone ||
-          arrparallel[i].activityone == relations[j].activitytwo ||
-          arrparallel[i].activitytwo == relations[j].activityone ||
-          arrparallel[i].activitytwo == relations[j].activitytwo )&&
+            arrparallel[i].activityone == relations[j].activitytwo ||
+            arrparallel[i].activitytwo == relations[j].activityone ||
+            arrparallel[i].activitytwo == relations[j].activitytwo) &&
           relations[j].relation == ">"
         ) {
-          if(first){
+          if (first) {
             relations[j].relation = "duplicate";
             first = false;
           }
@@ -206,7 +205,25 @@ const { parser } = require("json2csv");
       }
     });
     relations = arr;
-    
+
+    for (let i = 0; i < relations.length; i++) {
+      for (let j = 0; j < arrparallel.length; j++) {
+        if (
+          (relations[i].activityone == arrparallel[j].activityone ||
+            relations[i].activityone == arrparallel[j].activitytwo) &&
+          relations[i].relation == ">"
+        ) {
+          relations[i].activityone = JSON.stringify(arrparallel[j]);
+        } else if (
+          (relations[i].activitytwo == arrparallel[j].activitytwo ||
+            relations[i].activitytwo == arrparallel[j].activityone) &&
+          relations[i].relation == ">"
+        ) {
+          relations[i].activitytwo = JSON.stringify(arrparallel[j]);
+        }
+      }
+    }
+
     for (let i = 0; i < relations.length; i++) {
       for (let j = i + 1; j < relations.length; j++) {
         if (
@@ -215,22 +232,24 @@ const { parser } = require("json2csv");
           relations[i].relation == ">" &&
           relations[j].relation == ">"
         ) {
-          relations.push({
+          temp = {
             activityone: relations[i].activitytwo,
             relation: "#",
-            activitytwo: relations[j].activitytwo
-          });
+            activitytwo: relations[j].activitytwo,
+          };
+          //relations.push(temp);
+          relations[i].activitytwo = JSON.stringify(temp);
+          relations[j].activitytwo = JSON.stringify(temp);
         }
       }
     }
     //putting the causality signs
-    relations.forEach(element => {
-      if(element.relation == ">"){
+    relations.forEach((element) => {
+      if (element.relation == ">") {
         element.relation = "->";
       }
     });
     writeToCSV("./results/relations.csv", relations);
-
   } catch (error) {
     console.error(error);
   }
