@@ -4,7 +4,12 @@ const { parser } = require("json2csv");
 
 (async () => {
   try {
-    const file = await csv().fromFile("log - Copy.csv");
+    //taking arguments
+    args = process.argv;
+    //source to scrap
+    let source = args[2];
+
+    const file = await csv().fromFile(source);
     //console.log(file);
     var dir = "./results";
     //creating results file if not found in directory
